@@ -1,23 +1,41 @@
 use anyhow::{Context, Result};
-use argopt::{cmd_group, subcmd};
+use clap::{app_from_crate, App, AppSettings, ArgMatches};
 use std::path::Path;
 
-#[subcmd]
-fn extension(path: String) -> Result<()> {
+fn extension(rm: &ArgMatches, m: &ArgMatches) -> Result<String> {
+    let path = rm.value_of("PATH").context("<PATH> is required !")?;
     let path = Path::new(&path);
-    println!(
-        "{:?}",
-        path.extension().context("Failed to get extension !")?
-    );
-    Ok(())
+    let extension = path.extension().context("Failed to get extension !")?;
+    println!("{:?}", &extension);
+    Ok(extension.to_string_lossy().to_string())
 }
 
-#[subcmd]
-fn parent(path: String) -> Result<()> {
+fn parent(rm: &ArgMatches, m: &ArgMatches) -> Result<String> {
+    let path = rm.value_of("PATH").context("<PATH> is required !")?;
     let path = Path::new(&path);
-    println!("{:?}", path.parent().context("Failed to get parent !")?);
-    Ok(())
+    let parent = path.parent().context("Failed to get parent !")?;
+    println!("{:?}", &parent);
+    Ok(parent.to_string_lossy().to_string())
 }
 
-#[cmd_group(commands = [extension,parent])]
-fn main() -> Result<()> {}
+fn main() -> Result<()> {
+    let matches = app_from_crate!()
+        .setting(AppSettings::DeriveDisplayOrder)
+        .arg("-n --newline 'Output a newline'")
+        .arg("<PATH>          'target path'")
+        .subcommand(App::new("parent").about("Get parent directory"))
+        .subcommand(App::new("extension").about("Get file extension"))
+        .get_matches();
+
+    dbg!(&matches);
+
+    let s = match matches.subcommand() {
+        Some(("parent", sub_m)) => parent(&matches, sub_m)?,
+        Some(("extension", sub_m)) => extension(&matches, sub_m)?,
+        _ => "".to_string(),
+    };
+
+    print!("{}", s);
+
+    Ok(())
+}
